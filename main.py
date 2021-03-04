@@ -7,7 +7,14 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-
+# configuration of mail
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'momozamihlali@gmail.com'
+app.config['MAIL_PASSWORD'] = 'khazimla'
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+mail = Mail(app)
 
 
 # Defining the function that opens sqlite database and creates table
@@ -61,40 +68,16 @@ def add_users():
                     cursor.execute("INSERT INTO users (fullname, email_address, phone, Adults, Children ,Checkin ,Checkout , DISH ,ANYTHINGELSE) VALUES (?, ?, ?, ?, ?,?,?,?,?)", (fullname, email_address, phone, Adults,Children,Checkin,Checkout,DISH,ANYTHINGELSE))
                     con.commit()
                     msg = fullname + " was added to the databases"
+                    send_mail(fullname, email_address, Adults,Children, Checkin ,Checkout, DISH)
+                    return jsonify(msg)
         except Exception as e:
             # con.rollback()
-            msg = "Error occured in insert" + str(e)
+            msg = "Error occured in insert " + str(e)
         # finally:
         #
         #     # con.close()
         # return jsonify(msg=msg)
-    if request.method == 'POST':
-        try:
 
-            fullname = request.form['customer_name']
-            email_address = request.form['customers_email']
-            phone = request.form['visitor_phone']
-            Adults = request.form['total_adults']
-            Children = request.form['total_children']
-            Checkin = request.form['checkin']
-            Checkout = request.form['checkout']
-            DISH =request.form['dish']
-            ANYTHINGELSE =request.form['text']
-
-            data = {
-                'fullname' :
-                'email_address'
-            }
-            msg = Message(
-                'Hello',
-                sender='momozamihlali@gmail.com',
-                recipients= data
-            )
-            msg.body = 'Hello Flask message sent from Flask-Mail'
-            mail.send(msg)
-        except Exception as e:
-            con.rollback()
-            msg = "Error occured in insert" + str(e)
         finally:
 
             con.close()
@@ -118,27 +101,37 @@ def show_bookers():
         return jsonify(users)
 
 
-# configuration of mail
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
-app.config['MAIL_USERNAME'] = 'momozamihlali@gmail.com'
-app.config['MAIL_PASSWORD'] = 'khazimla'
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
-mail = Mail(app)
-
-
 # message object mapped to a particular URL ‘/’
 @app.route('/mail/')
 def index():
     msg = Message(
-        'Hello',
+        "Hello Jason",
         sender='momozamihlali@gmail.com',
         recipients=['momozamihlali@gmail.com']
     )
     msg.body = 'Hello Flask message sent from Flask-Mail'
     mail.send(msg)
     return 'Sent'
+
+
+def send_mail(fullname, email_address, Adults , Children, Checkin, Checkout,DISH):
+    msg = Message(
+        "Confirmation of booking",
+        sender=email_address,
+        recipients=[email_address]
+    )
+    msg.body = """
+        Hello there {fullname},
+        
+        We are glad to hear that you are booking a table at Flavoursome for {no_adults} adults and {children} children on {checkin} :{checkout}
+        
+        Your mouth watering {food} is ready for you.
+        
+        For further information we'll contact you shortly at your email address : {email}
+        
+        we can't wait to see you !!
+    """.format(fullname = fullname, email = email_address, no_adults = Adults ,children=Children ,checkin=Checkin,checkout=Checkout, food=DISH)
+    mail.send(msg)
 
 
 if __name__ =='__main__':
