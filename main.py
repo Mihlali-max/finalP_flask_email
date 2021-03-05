@@ -23,7 +23,20 @@ def create_users_table():
     print("Databases has opened")
 
     connect.execute('CREATE TABLE IF NOT EXISTS users (user id INTEGER, fullname TEXT, email_address TEXT, phone INTEGER, Adults INTEGER, Children INTEGER,  Checkin TEXT ,Checkout TEXT, DISH TEXT, ANYTHINGELSE TEXT )')
-    print("Table was created successfully")
+    print("Users Table was created successfully")
+    # print(connect.execute("PRAGMA table_info('users')"))
+    #
+    # print("Users Table was created successfully")
+    # print(connect.execute("PRAGMA foreign_keys=off"))
+    # print(connect.execute("BEGIN TRANSACTION"))
+    # print(connect.execute("ALTER TABLE users RENAME TO back_up_users_2"))
+    # print(connect.execute("PRAGMA table_info('back_up_users')").fetchall())
+    # print(connect.execute("CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, fullname TEXT, email_address TEXT, phone INTEGER, Adults INTEGER, Children INTEGER,  Checkin TEXT ,Checkout TEXT, DISH TEXT, ANYTHINGELSE TEXT)"))
+    # print(connect.execute('INSERT INTO users SELECT * FROM back_up_users'))
+    # print(connect.execute("PRAGMA foreign_keys=on"))
+    # print(connect.execute("PRAGMA table_info('users')").fetchall())
+    print(connect.commit())
+
     connect.close()
 
 
@@ -68,7 +81,11 @@ def add_users():
                     cursor.execute("INSERT INTO users (fullname, email_address, phone, Adults, Children ,Checkin ,Checkout , DISH ,ANYTHINGELSE) VALUES (?, ?, ?, ?, ?,?,?,?,?)", (fullname, email_address, phone, Adults,Children,Checkin,Checkout,DISH,ANYTHINGELSE))
                     con.commit()
                     msg = fullname + " was added to the databases"
-                    send_mail(fullname, email_address, Adults,Children, Checkin ,Checkout, DISH)
+                    row_id = cursor.lastrowid
+                    cancelattion_link = "<a href='{link}'>link</a>".format(link="http://127.0.0.1:5000/delete/" + str(row_id) + "/")
+                    send_mail(fullname, email_address, Adults,Children, Checkin ,Checkout, DISH, cancelattion_link)
+
+
                     return jsonify(msg)
         except Exception as e:
             # con.rollback()
@@ -82,6 +99,7 @@ def add_users():
 
             con.close()
         return jsonify(msg=msg)
+
 
 
 @app.route('/show-bookers/', methods=['GET'])
@@ -101,6 +119,8 @@ def show_bookers():
         return jsonify(users)
 
 
+@app.route
+
 # message object mapped to a particular URL ‘/’
 @app.route('/mail/')
 def index():
@@ -114,7 +134,7 @@ def index():
     return 'Sent'
 
 
-def send_mail(fullname, email_address, Adults , Children, Checkin, Checkout,DISH):
+def send_mail(fullname, email_address, Adults, Children,Checkin,Checkout,DISH, cancellation_link):
     msg = Message(
         "Confirmation of booking",
         sender=email_address,
@@ -130,8 +150,29 @@ def send_mail(fullname, email_address, Adults , Children, Checkin, Checkout,DISH
         For further information we'll contact you shortly at your email address : {email}
         
         we can't wait to see you !!
-    """.format(fullname = fullname, email = email_address, no_adults = Adults ,children=Children ,checkin=Checkin,checkout=Checkout, food=DISH)
+        
+        however if you want to cancel your reservation you can {link} here  or call our reservation team +27730877365
+        
+        
+    """.format(fullname = fullname, email = email_address, no_adults = Adults ,children=Children ,checkin=Checkin,checkout=Checkout, food=DISH, link=cancellation_link)
     mail.send(msg)
+
+
+@app.route('/delete/<int:user_id>/', methods=["GET"])
+def delete_user(user_id):
+    msg = None
+    try:
+        with sqlite3.connect('food.db') as con:
+            cur = con.cursor()
+            cur.execute("DELETE FROM users WHERE id=" + str(user_id))
+            con.commit()
+            msg = "A record was deleted successfully from the database."
+    except Exception as e:
+        con.rollback()
+        msg = "Error occurred when deleting the user in the database: " + str(e)
+    finally:
+        con.close()
+        return jsonify(msg=msg)
 
 
 if __name__ =='__main__':
